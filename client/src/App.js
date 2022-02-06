@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import Vesting from "./abis/Vesting.json";
 import detectEthereumProvider from '@metamask/detect-provider';
 import Web3 from 'web3';
-import { Grid, Button, Form, Input, Label } from 'semantic-ui-react';
+import { Grid, Button, Form, Input, Label, Card, Header } from 'semantic-ui-react';
 import 'semantic-ui-css/semantic.min.css';
 
 import "./App.css";
@@ -17,8 +17,6 @@ class App extends Component {
       contract: null,
       beneficiary: "",
       address: "",
-      loading: false,
-      error: "",
       success: "",
       name: "",
       owner: "",
@@ -116,37 +114,77 @@ class App extends Component {
 
   vesting = async () => {
     await this.state.contract.methods.tokenVesting().send({ from: this.state.account })
+    let ownerBalance = await this.state.contract.methods.balanceOf(this.state.owner).call();
+    this.setState({ ownerBalance });
   }
 
   render() {
     return (
       <div className="App">
-        <h1>Token Vesting</h1>
+        <Header as='h1'>Token Vesting</Header>
         <Grid divided='vertically'>
-          <Grid.Row columns={2}>
+          <Grid.Row columns={2} style={{ margin: "20px" }}>
             <Grid.Column>
-              <p>Total number of tokens: {this.state.totalSupply}</p>
-              <p>Token name: {this.state.name} ({this.state.symbol})</p>
-              <p>Owner: {this.state.owner}</p>
-              <p>Balance of owner: {this.state.ownerBalance}</p>
 
-              Get balance for address: <Input type="text" name="address" value={this.state.address} onChange={this.handleInputChange}></Input>
-              <Button type="button" onClick={this.getBalance}>Get balance</Button>
-              <p>Balance of {this.state.address}: {this.state.balance}</p>
+              <Card.Group>
+                <Card style={{ width: "900px" }}>
+                  <Card.Content>
+                    <Card.Header>{this.state.name} ({this.state.symbol})</Card.Header>
+                    <Card.Meta>Total number of Tokens</Card.Meta>
+                    <Card.Description>
+                      {this.state.totalSupply}
+                    </Card.Description>
+                  </Card.Content>
 
-              Get beneficiary (index): <Input type="int" name="index" value={this.state.index} onChange={this.handleInputChange}></Input>
-              <Button type="button" onClick={this.getBeneficiary}>Get beneficiary</Button>
-              {this.state.beneficiary}
+                  <Card.Content>
+                    <Card.Header>Owner Info</Card.Header>
+                    <Card.Meta>Address: {this.state.owner}</Card.Meta>
+                    <Card.Description>
+                      Balance: {this.state.ownerBalance}
+                    </Card.Description>
+                  </Card.Content>
 
+                  <Card.Content>
+                    <Card.Header>Get balance for address: <Input type="text" name="address" value={this.state.address} onChange={this.handleInputChange}></Input></Card.Header>
+                    <Card.Meta><Button type="button" onClick={this.getBalance} style={{ margin: "20px" }}>Get balance</Button></Card.Meta>
+                    <Card.Description>
+                      Balance of {this.state.address}: {this.state.balance}
+                    </Card.Description>
+                  </Card.Content>
+
+                  <Card.Content>
+                    <Card.Header>Get beneficiary (index): <Input type="int" name="index" value={this.state.index} onChange={this.handleInputChange}></Input></Card.Header>
+                    <Card.Meta><Button type="button" onClick={this.getBeneficiary} style={{ margin: "20px" }}>Get beneficiary</Button></Card.Meta>
+                    <Card.Description>
+                      {this.state.beneficiary}
+                    </Card.Description>
+                  </Card.Content>
+                </Card>
+              </Card.Group>
             </Grid.Column>
+
+
             <Grid.Column>
+              <Card.Group>
+                <Card style={{ width: "900px" }}>
+                  <Card.Content>
+                    <Card.Header>Add beneficiary</Card.Header>
+                    <Card.Meta><Input type="text" name="addressToAdd" value={this.state.addressToAdd} onChange={this.handleInputChange} style={{ width: "400px" }}></Input></Card.Meta>
+                    <Card.Description>
+                      <Button type="button" onClick={this.addBeneficiary}>Add beneficiary</Button>
+                    </Card.Description>
+                  </Card.Content>
 
-              Add beneficiary: <Input type="text" name="addressToAdd" value={this.state.addressToAdd} onChange={this.handleInputChange}></Input>
-              <Button type="button" onClick={this.addBeneficiary}>Add beneficiary</Button>
+                  <Card.Content>
+                    <Card.Header>Vesting</Card.Header>
+                    <Card.Meta>Disperse the tokens to the beneficiaries</Card.Meta>
+                    <Card.Description>
+                      <Button type="button" onClick={this.vesting} style={{ margin: "20px" }}>Disperse tokens (vesting)</Button>
+                    </Card.Description>
+                  </Card.Content>
 
-              <br></br>
-
-              <Button type="button" onClick={this.vesting} style={{ margin: "20px" }}>Disperse tokens (vesting)</Button>
+                </Card>
+              </Card.Group>
 
             </Grid.Column>
           </Grid.Row>

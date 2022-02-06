@@ -29,10 +29,24 @@ contract Vesting is Ownable, XYZToken {
         releaseAmount = totalSupply() / releases;
         tokensPerBeneficiaryPerMinute = releaseAmount / 10;
 
+        // the assignment says to input 10 addresses so
         startTime = block.timestamp;
         endTime = startTime + 365 days;
         lastRelease = startTime;
     }
+
+    /*
+    The assignment specifies that the owner can input exact 10 addresses
+    It might be better to start the timer once all of the addresses are specified
+    Because if the tokenVesting function is executed before all the addresses are entered
+    some beneficiaries will not get the tokens
+    For testing purposes I started the timer right away to being able to interacting with the smart contract
+
+    function startTimer() internal {
+        startTime = block.timestamp;
+        endTime = startTime + 365 days;
+        lastRelease = startTime;
+    }*/
 
     function addBeneficiaries(address _beneficiary) public onlyOwner {
         require(
@@ -43,10 +57,20 @@ contract Vesting is Ownable, XYZToken {
             beneficiaries.length < 10,
             "There are already 10 beneficiaries."
         );
-        require(!isBeneficiary[_beneficiary]);
-        // 10% share for each
+        require(!isBeneficiary[_beneficiary], "Address already exists!");
+
         beneficiaries.push(_beneficiary);
         isBeneficiary[_beneficiary] = true;
+
+        /*
+
+        This timer could start here instead of starting by deploying the contract
+        
+        if (beneficiaries.length == 10) {
+            startTimer();
+        }
+        
+        */
     }
 
     function tokenVesting() public {
@@ -66,6 +90,8 @@ contract Vesting is Ownable, XYZToken {
             "The last release was less than one minute ago."
         );
 
+        // assure to distribute a higher amount of tokens in case the release function was not triggered x minutes before
+        // so we can disperse the beneficiary should own by this time
         minutesSinceLastRelease = timeDifference.div(60);
         amount = minutesSinceLastRelease.mul(tokensPerBeneficiaryPerMinute);
 
