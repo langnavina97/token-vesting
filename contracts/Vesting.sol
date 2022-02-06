@@ -8,8 +8,8 @@ import "./XYZToken.sol";
 contract Vesting is Ownable, XYZToken {
     using SafeMath for uint256;
 
-    address[] beneficiaries;
-    // mapping to check whether the beneficary already exists (cheaper than a loop for the array)
+    address[] public beneficiaries;
+    // mapping to check whether the beneficary already exists (cheaper than to loop through the array)
     mapping(address => bool) isBeneficiary;
 
     uint256 startTime;
@@ -49,7 +49,7 @@ contract Vesting is Ownable, XYZToken {
         isBeneficiary[_beneficiary] = true;
     }
 
-    function vest() public {
+    function tokenVesting() public {
         uint256 timeDifference;
         uint256 minutesSinceLastRelease;
         uint256 amount;

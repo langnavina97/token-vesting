@@ -10,7 +10,7 @@ module.exports = {
   },
 
   contracts_directory: './contracts/',
-  contracts_build_directory: './abis',
+  contracts_build_directory: './client/src/abis',
 
   // Configure your compilers
   compilers: {

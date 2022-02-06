@@ -1,73 +1,161 @@
 import React, { Component } from "react";
-import SimpleStorageContract from "./contracts/SimpleStorage.json";
-import getWeb3 from "./getWeb3";
+import Vesting from "./abis/Vesting.json";
+import detectEthereumProvider from '@metamask/detect-provider';
+import Web3 from 'web3';
+import { Grid, Button, Form, Input, Label } from 'semantic-ui-react';
+import 'semantic-ui-css/semantic.min.css';
 
 import "./App.css";
 
 class App extends Component {
-  state = { storageValue: 0, web3: null, accounts: null, contract: null };
 
-  componentDidMount = async () => {
-    try {
-      // Get network provider and web3 instance.
-      const web3 = await getWeb3();
-
-      // Use web3 to get the user's accounts.
-      const accounts = await web3.eth.getAccounts();
-
-      // Get the contract instance.
-      const networkId = await web3.eth.net.getId();
-      const deployedNetwork = SimpleStorageContract.networks[networkId];
-      const instance = new web3.eth.Contract(
-        SimpleStorageContract.abi,
-        deployedNetwork && deployedNetwork.address,
-      );
-
-      // Set web3, accounts, and contract to the state, and then proceed with an
-      // example of interacting with the contract's methods.
-      this.setState({ web3, accounts, contract: instance }, this.runExample);
-    } catch (error) {
-      // Catch any errors for any of the above operations.
-      alert(
-        `Failed to load web3, accounts, or contract. Check console for details.`,
-      );
-      console.error(error);
+  constructor(props) {
+    super(props);
+    this.state = {
+      account: '',
+      totalSupply: 0,
+      contract: null,
+      beneficiary: "",
+      address: "",
+      loading: false,
+      error: "",
+      success: "",
+      name: "",
+      owner: "",
+      symbol: "",
+      ownerBalance: 0,
+      value: "",
+      balance: 0,
+      index: 0,
+      addressToAdd: ""
     }
-  };
+  }
 
-  runExample = async () => {
-    const { accounts, contract } = this.state;
+  async componentDidMount() {
+    await this.loadWeb3();
+    await this.loadBlockchainData();
+  }
 
-    // Stores a given value, 5 by default.
-    await contract.methods.set(5).send({ from: accounts[0] });
+  // first up is to detect ethereum provider
+  async loadWeb3() {
+    const provider = await detectEthereumProvider();
 
-    // Get the value from the contract to prove it worked.
-    const response = await contract.methods.get().call();
+    // modern browsers
+    if (provider) {
+      console.log('Ethereum wallet is connected');
 
-    // Update state with the result.
-    this.setState({ storageValue: response });
-  };
+      window.web3 = new Web3(provider);
+    } else {
+      console.log('No ethereum wallet detected');
+    }
+  }
+
+  async loadBlockchainData() {
+    const web3 = window.web3;
+    const accounts = await window.web3.eth.getAccounts();
+    this.setState({ account: accounts[0] })
+
+    const networkId = await web3.eth.net.getId();
+    const networkData = Vesting.networks[networkId];
+    if (networkData) {
+      const abi = Vesting.abi;
+      const address = networkData.address;
+      const contract = new web3.eth.Contract(abi, address);
+      this.setState({ contract });
+
+      const totalSupply = await contract.methods.totalSupply().call();
+      this.setState({ totalSupply });
+
+      const name = await contract.methods.name().call();
+      this.setState({ name });
+
+      const owner = await contract.methods.owner().call();
+      this.setState({ owner });
+
+      const symbol = await contract.methods.symbol().call();
+      this.setState({ symbol });
+
+      const ownerBalance = await contract.methods.balanceOf(owner).call();
+      this.setState({ ownerBalance });
+
+
+    } else {
+      window.alert('Smart contract not deployed!')
+    }
+
+  }
+
+  handleInputChange = (event) => {
+    const target = event.target;
+    const value = target.type === "checkbox" ? target.checked : target.value;
+    const name = target.name;
+    this.setState({
+      [name]: value
+    })
+  }
+
+  getBalance = async () => {
+    let { address } = this.state;
+    let balance = await this.state.contract.methods.balanceOf(address).call();
+    this.setState({ balance });
+  }
+
+  getBeneficiary = async () => {
+    let { index } = this.state;
+    let beneficiary;
+    beneficiary = await this.state.contract.methods.beneficiaries(index).call();
+    if (beneficiary) {
+      this.setState({ beneficiary });
+    }
+  }
+
+  addBeneficiary = async () => {
+    let { addressToAdd } = this.state;
+    await this.state.contract.methods.addBeneficiaries(addressToAdd).send({ from: this.state.account })
+  }
+
+  vesting = async () => {
+    await this.state.contract.methods.tokenVesting().send({ from: this.state.account })
+  }
 
   render() {
-    if (!this.state.web3) {
-      return <div>Loading Web3, accounts, and contract...</div>;
-    }
     return (
       <div className="App">
-        <h1>Good to Go!</h1>
-        <p>Your Truffle Box is installed and ready.</p>
-        <h2>Smart Contract Example</h2>
-        <p>
-          If your contracts compiled and migrated successfully, below will show
-          a stored value of 5 (by default).
-        </p>
-        <p>
-          Try changing the value stored on <strong>line 42</strong> of App.js.
-        </p>
-        <div>The stored value is: {this.state.storageValue}</div>
-      </div>
+        <h1>Token Vesting</h1>
+        <Grid divided='vertically'>
+          <Grid.Row columns={2}>
+            <Grid.Column>
+              <p>Total number of tokens: {this.state.totalSupply}</p>
+              <p>Token name: {this.state.name} ({this.state.symbol})</p>
+              <p>Owner: {this.state.owner}</p>
+              <p>Balance of owner: {this.state.ownerBalance}</p>
+
+              Get balance for address: <Input type="text" name="address" value={this.state.address} onChange={this.handleInputChange}></Input>
+              <Button type="button" onClick={this.getBalance}>Get balance</Button>
+              <p>Balance of {this.state.address}: {this.state.balance}</p>
+
+              Get beneficiary (index): <Input type="int" name="index" value={this.state.index} onChange={this.handleInputChange}></Input>
+              <Button type="button" onClick={this.getBeneficiary}>Get beneficiary</Button>
+              {this.state.beneficiary}
+
+            </Grid.Column>
+            <Grid.Column>
+
+              Add beneficiary: <Input type="text" name="addressToAdd" value={this.state.addressToAdd} onChange={this.handleInputChange}></Input>
+              <Button type="button" onClick={this.addBeneficiary}>Add beneficiary</Button>
+
+              <br></br>
+
+              <Button type="button" onClick={this.vesting} style={{ margin: "20px" }}>Disperse tokens (vesting)</Button>
+
+            </Grid.Column>
+          </Grid.Row>
+        </Grid>
+      </div >
     );
   }
 }
 
 export default App;
+
+
